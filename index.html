@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>EPS Timer</title>
+<style>
+:root{color-scheme:dark;--bg:#0f172a;--card:#1e293b;--txt:#f1f5f9;--mut:#94a3b8;--acc:#22c55e;--warn:#f59e0b;--blue:#38bdf8}
+*{box-sizing:border-box}
+body{margin:0 auto;background:var(--bg);color:var(--txt);font-family:system-ui,Arial,sans-serif;min-height:100%;padding-block:14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:592px;transition:background .3s}
+body.flash{background:#166534}
+h1{font-size:18px;margin:0 0 10px;text-align:center}
+.years{display:flex;gap:6px;margin-bottom:12px}
+.years button{flex:1;padding:10px 0;border:0;border-radius:10px;background:var(--card);color:var(--txt);font-size:16px}
+.years button.on{background:var(--blue);color:#0f172a;font-weight:700}
+.main{min-width:0;background:var(--card);border-radius:16px;padding:18px;text-align:center}
+#stage{font-size:20px;font-weight:700}
+#stageAr{color:var(--mut);font-size:15px;margin-bottom:4px}
+#clock{font-size:88px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1;color:var(--acc)}
+#clock.rest{color:var(--warn)}
+.bar{height:10px;background:#334155;border-radius:6px;overflow:hidden;margin:10px 0}
+.bar i{display:block;height:100%;width:0;background:var(--acc)}
+#total{color:var(--mut);font-size:14px}
+.ctl{display:flex;gap:8px;margin:12px 0}
+.ctl button{flex:1;padding:14px 0;border:0;border-radius:12px;font-size:16px;font-weight:700;color:#0f172a;background:var(--acc)}
+.ctl button.sec{background:#475569;color:var(--txt)}
+ul{list-style:none;padding:0;margin:0}
+li{display:flex;justify-content:space-between;padding:9px 12px;border-radius:8px;font-size:14px;color:var(--mut)}
+li.cur{background:#334155;color:var(--txt);font-weight:700}
+li.done{text-decoration:line-through;opacity:.5}
+details{margin-top:12px;background:var(--card);border-radius:12px;padding:10px 12px}
+summary{color:var(--mut)}
+.row{gap:12px;display:flex;justify-content:space-between;align-items:center;margin:8px 0;font-size:14px}
+input[type=number]{background:var(--bg);color:var(--txt);width:80px;padding:6px;border-radius:8px;border:0;font-size:16px;text-align:center}
+#msg{min-height:20px;color:var(--warn);font-size:13px;text-align:center;margin-top:6px}
+#lockBtn{width:100%;margin:0 0 12px;padding:14px;border:0;border-radius:12px;background:#475569;color:var(--txt);font-size:16px;font-weight:700}
+#lock{position:fixed;inset:0;z-index:50;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#lock.on{display:flex}
+#lStage{font-size:22px;font-weight:700}
+#lClock{font-size:min(28vw,150px);font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1;color:var(--acc)}
+#lClock.rest{color:var(--warn)}
+#unlock{position:relative;overflow:hidden;padding:16px 30px;border:0;border-radius:14px;background:#475569;color:var(--txt);font-size:17px;font-weight:700;touch-action:none}
+#unlock i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--acc);opacity:.55}
+#unlock span{position:relative}
+#lHint{color:var(--mut);font-size:13px}
+#install{display:none;width:100%;margin:0 0 12px;padding:16px;border:0;border-radius:12px;background:var(--blue);color:#0f172a;font-size:17px;font-weight:800}
+#iosHint{display:none;margin:0 0 12px;padding:10px 12px;border-radius:10px;background:var(--card);color:var(--mut);font-size:13px;text-align:center}
+html,body{background:#0f172a}
+</style>
+</head>
+<body>
+
+<h1>⏱️ EPS Lesson Timer — مؤقت حصة التربية البدنية</h1>
+<button id="install">⬇️ تثبيت التطبيق — Install app</button>
+<div id="iosHint">iPhone: Share ← Add to Home Screen</div>
+<button id="lockBtn">🔒 Lock screen — قفل الشاشة</button>
+<div class="years" id="years"></div>
+
+<div class="main">
+  <div id="stage">—</div><div id="stageAr"></div>
+  <div id="clock">00:00</div>
+  <div class="bar"><i id="prog"></i></div>
+  <div id="total"></div>
+  <div class="ctl">
+    <button id="go">Start</button>
+    <button class="sec" id="skip">Skip ⏭</button>
+    <button class="sec" id="reset">Reset</button>
+  </div>
+  <div id="msg"></div>
+</div>
+
+<ul id="list" style="margin-top:12px"></ul>
+
+<details>
+  <summary>Settings (minutes / seconds)</summary>
+  <div class="row"><span>Warm-up (min)</span><input type="number" id="cWarm" min="1"></div>
+  <div class="row"><span>Workshop (min)</span><input type="number" id="cWork" min="1"></div>
+  <div class="row"><span>Change + water, per workshop (sec)</span><input type="number" id="cRest" min="0"></div>
+  <div class="row"><span>Final phase (min)</span><input type="number" id="cFin" min="1"></div>
+  <div style="color:var(--mut);font-size:12px">Changes apply to the selected year and are saved on this device.</div>
+</details>
+
+<div id="lock" aria-hidden="true">
+  <div id="lStage"></div>
+  <div id="lClock">00:00</div>
+  <button id="unlock"><i></i><span>Hold to unlock — اضغط مطولا لفتح القفل</span></button>
+  <div id="lHint">Touch is blocked. The timer keeps running.</div>
+</div>
+<script>
+const DEFAULTS={
+  1:{warm:10,work:10,rest:75,fin:5},
+  2:{warm:10,work:10,rest:75,fin:5},
+  3:{warm:10,work:10,rest:75,fin:5},
+  4:{warm:10,work:15,rest:225,fin:5}   // 10+4*15+4*3:45+5 = 90 min
+};
+let cfg=JSON.parse(JSON.stringify(DEFAULTS));
+try{const s=localStorage.getItem('epsCfg');if(s)cfg=Object.assign(cfg,JSON.parse(s));}catch(e){}
+let year=1,steps=[],idx=0,running=false,startTs=0,elapsedBefore=0,stepStartOffset=0,timer=null,wake=null,ac=null;
+const $=id=>document.getElementById(id);
+const fmt=s=>{s=Math.max(0,Math.ceil(s));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
+
+function build(){
+  const c=cfg[year];steps=[];
+  steps.push({n:'Phase 1 — Warm-up',a:'المرحلة 1: الإحماء',d:c.warm*60,rest:false});
+  for(let i=1;i<=4;i++){
+    steps.push({n:'Workshop '+i,a:'الورشة '+i,d:c.work*60,rest:false});
+    steps.push({n:'Change clothes & drink water',a:'تغيير الملابس وشرب الماء',d:c.rest,rest:true});
+  }
+  steps.push({n:'Phase 3 — Cool-down / Final',a:'المرحلة الأخيرة',d:c.fin*60,rest:false});
+  steps=steps.filter(s=>s.d>0);
+}
+function totalSecs(){return steps.reduce((a,s)=>a+s.d,0)}
+function startOf(i){return steps.slice(0,i).reduce((a,s)=>a+s.d,0)}
+
+function render(el){
+  const s=steps[idx];if(!s){return}
+  const inStep=Math.min(s.d,el-startOf(idx));
+  $('stage').textContent=s.n;$('stageAr').textContent=s.a;
+  $('clock').textContent=fmt(s.d-inStep);
+  $('clock').className=s.rest?'rest':'';
+  $('prog').style.width=(inStep/s.d*100)+'%';
+  $('prog').style.background=s.rest?'var(--warn)':'var(--acc)';
+  $('total').textContent='Lesson remaining: '+fmt(totalSecs()-el)+' / '+fmt(totalSecs());
+  $('list').innerHTML=steps.map((x,i)=>`<li class="${i<idx?'done':i==idx?'cur':''}"><span>${x.n}</span><span>${fmt(x.d)}</span></li>`).join('');
+}
+function elapsed(){return elapsedBefore+(running?(Date.now()-startTs)/1000:0)}
+
+// alerts
+function beep(times,freq,len){
+  try{
+    ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+    for(let i=0;i<times;i++){
+      const o=ac.createOscillator(),g=ac.createGain();
+      o.frequency.value=freq;o.connect(g);g.connect(ac.destination);
+      const t=ac.currentTime+i*(len+0.15);
+      g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.8,t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+len);
+      o.start(t);o.stop(t+len+0.02);
+    }
+  }catch(e){}
+}
+function alertStage(final){
+  beep(final?4:2,final?660:880,final?0.5:0.3);
+  if(navigator.vibrate)navigator.vibrate(final?[400,150,400,150,400]:[300,150,300]);
+  document.body.classList.add('flash');setTimeout(()=>document.body.classList.remove('flash'),1200);
+}
+
+function tick(){
+  const el=elapsed();
+  while(idx<steps.length&&el>=startOf(idx)+steps[idx].d){
+    idx++;
+    if(idx>=steps.length){finish();return}
+    alertStage(false);
+  }
+  render(el);
+}
+function finish(){
+  running=false;clearInterval(timer);releaseWake();
+  alertStage(true);
+  $('clock').textContent='00:00';$('stage').textContent='Lesson finished ✅';$('stageAr').textContent='انتهت الحصة';
+  $('prog').style.width='100%';$('go').textContent='Start';
+  idx=steps.length-1;elapsedBefore=0;
+  $('list').innerHTML=steps.map(x=>`<li class="done"><span>${x.n}</span><span>${fmt(x.d)}</span></li>`).join('');
+}
+async function getWake(){try{if('wakeLock' in navigator)wake=await navigator.wakeLock.request('screen')}catch(e){}}
+function releaseWake(){try{wake&&wake.release();wake=null}catch(e){}}
+document.addEventListener('visibilitychange',()=>{if(running&&document.visibilityState==='visible'){getWake();tick()}});
+
+$('go').onclick=()=>{
+  if(!running){
+    ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+    if(ac.state==='suspended')ac.resume();
+        if(idx>=steps.length)idx=0;
+    startTs=Date.now();running=true;$('go').textContent='Pause';
+    if(elapsedBefore===0)alertStage(false);
+    getWake();timer=setInterval(tick,250);tick();
+  }else{
+    elapsedBefore=elapsed();running=false;clearInterval(timer);releaseWake();$('go').textContent='Resume';
+  }
+};
+$('skip').onclick=()=>{
+  if(idx>=steps.length-1){finish();return}
+  elapsedBefore=startOf(idx+1);startTs=Date.now();idx++;alertStage(false);render(elapsed());
+};
+$('reset').onclick=()=>{
+  running=false;clearInterval(timer);releaseWake();idx=0;elapsedBefore=0;$('go').textContent='Start';render(0);
+};
+function selectYear(y){
+  year=y;running=false;clearInterval(timer);releaseWake();idx=0;elapsedBefore=0;$('go').textContent='Start';
+  document.querySelectorAll('.years button').forEach(b=>b.classList.toggle('on',+b.dataset.y===y));
+  const c=cfg[y];$('cWarm').value=c.warm;$('cWork').value=c.work;$('cRest').value=c.rest;$('cFin').value=c.fin;
+  build();render(0);
+  $('msg').textContent=y===4?'Year 4: 90 min — workshops of 15 min':'Years 1–3: 60 min — workshops of 10 min';
+}
+$('years').innerHTML=[1,2,3,4].map(y=>`<button data-y="${y}">Year ${y}</button>`).join('');
+document.querySelectorAll('.years button').forEach(b=>b.onclick=()=>selectYear(+b.dataset.y));
+[['cWarm','warm'],['cWork','work'],['cRest','rest'],['cFin','fin']].forEach(([id,k])=>{
+  $(id).onchange=()=>{
+    cfg[year][k]=Math.max(0,+$(id).value||0);
+    try{localStorage.setItem('epsCfg',JSON.stringify(cfg))}catch(e){}
+    selectYear(year);
+  };
+});
+selectYear(1);
+
+// ---- touch lock ----
+let lockTick=null,holdT=null;
+function mirror(){$('lStage').textContent=$('stage').textContent;$('lClock').textContent=$('clock').textContent;$('lClock').className=$('clock').className}
+function setLock(on){
+  $('lock').classList.toggle('on',on);$('lock').setAttribute('aria-hidden',on?'false':'true');
+  clearInterval(lockTick);
+  if(on){mirror();lockTick=setInterval(mirror,250)}
+}
+$('lockBtn').onclick=()=>setLock(true);
+const fill=document.querySelector('#unlock i');
+function cancelHold(){clearTimeout(holdT);fill.style.transition='none';fill.style.width='0'}
+$('unlock').addEventListener('pointerdown',e=>{
+  e.preventDefault();cancelHold();
+  requestAnimationFrame(()=>{fill.style.transition='width 1.5s linear';fill.style.width='100%'});
+  holdT=setTimeout(()=>{cancelHold();setLock(false)},1500);
+});
+['pointerup','pointerleave','pointercancel'].forEach(t=>$('unlock').addEventListener(t,cancelHold));
+$('lock').addEventListener('contextmenu',e=>e.preventDefault());
+$('lock').addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
+
+// ---- install button + offline worker ----
+let deferred=null;
+const standalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;if(!standalone)$('install').style.display='block'});
+$('install').onclick=async()=>{if(!deferred)return;deferred.prompt();await deferred.userChoice;deferred=null;$('install').style.display='none'};
+window.addEventListener('appinstalled',()=>{$('install').style.display='none'});
+if(!standalone&&/iphone|ipad|ipod/i.test(navigator.userAgent))$('iosHint').style.display='block';
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+
+</body>
+</html>
